@@ -1,16 +1,16 @@
 import numpy as np
 
 def knearestneighbor(test_data, train_data, train_label, k):
-    est_class = np.zeros((len(test_data),))
+    est_class = np.zeros((len(test_data),1))
     for i in range(len(test_data)):
         test_now = test_data[i]
         length = len(train_data)
         distance = np.zeros((length,1))
         for j in range(length):
             train = train_data[j]
-            distance[j] = np.sqrt(sum((train[k]-test_now[k])**2for k in range(10)))
-        sorted_index = np.argsort(distance,axis=0)        
-        index = sorted_index[:k]
+            distance[j] = np.sqrt(abs(train-test_now))
+        sorted_index = np.argsort(distance,axis=0) 
+        index = sorted_index[:3]
         classcount = {}
         for a in range(k):
             label = train_label[index[a][0]]
@@ -20,47 +20,45 @@ def knearestneighbor(test_data, train_data, train_label, k):
             else:
                 classcount[num_class] =1
         est_class[i] = max(zip(classcount.values(), classcount.keys()))[1]
-    
     return est_class
 
 def cross_validate(data, gt_labels, k, num_folds):
     length,num_feature = np.shape(data)
-    fold_accuracies = np.zeros((num_folds,1))
-    avg_accuracy = 0
+    fold_accuracies = np.zeros((num_folds,num_feature))
     index = np.arange(length)
     np.random.shuffle(index)
+    num_neighbour = k
     length_test = length//num_folds
-    for k in range(num_folds):
-        if k !=num_folds-1:
-            test_index = index[k*length_test:(k+1)*length_test]
-            train_index = np.hstack((index[0:k*length_test],index[(k+1)*length_test:]))
-        else:
-            test_index = index[k*length_test:]
-            train_index = index[0:k*length_test]
-        train_data = [data[index] for index in train_index]
-        test_data = [data[index] for index in test_index]
-        train_label = [gt_labels[i] for i in train_index]
-        est_class = knearestneighbor(test_data, train_data, train_label, 3)
-        test_label = [gt_labels[i] for i in test_index]
-        num = 0
-        for i in range(len(est_class)):
-            print(type(int(est_class[i])))
-            print(type(test_label[i]))
-            if int(est_class[i]) == int(test_label[i]):
-                num+=1
-        print(num)
-        fold_accuracies[k] = num/len(est_class)
-        avg_accuracy +=fold_accuracies[k]
-    avg_accuracy = avg_accuracy/num_folds
-    return avg_accuracy,fold_accuracies
+    config_matrix = np.zeros((num_feature,5,5))
+    for i in range(num_feature):
+        feature = data[:,i]
+        for k in range(num_folds):
+            if k!=num_folds-1:
+                test_index = index[k*length_test:(k+1)*length_test]
+                train_index = np.hstack((index[0:k*length_test],index[(k+1)*length_test:]))
+            else:
+                test_index = index[k*length_test:]
+                train_index = index[0:k*length_test]
+            feature_train = [feature[index] for index in train_index]
+            feature_test = [feature[index] for index in test_index]
+            train_label = [gt_labels[index] for index in train_index]
+            test_label = [gt_labels[index] for index in test_index]
+            est_class = knearestneighbor(feature_test, feature_train, train_label,num_neighbour)
+            num = sum(int(est_class[a])==int(test_label[a]) for a in range(len(est_class)))
+            for j in range(len(est_class)):
+                config_matrix[i,int(est_class[j])-1,int(test_label[j])-1] +=1
+            fold_accuracies[k,i]= num/len(est_class)
+    avg_accuracy = np.mean(fold_accuracies,axis=0)
+    
+
+    return avg_accuracy,fold_accuracies,config_matrix
     
 
 
 
 
 
-    
-    return data
+
 
 def select_features(data, labels, k, num_folds):
 
@@ -72,9 +70,10 @@ if __name__ == "__main__":
     gt_labels = np.loadtxt(pathlabel,dtype=str)
     data = np.loadtxt(pathdata, dtype=float)
     data = np.transpose(data)
-    avg_accuracy,fold_accuracies = cross_validate(data, gt_labels, 3, 3)
-    print(avg_accuracy)
+    avg_accuracy,fold_accuracies,config_matrix = cross_validate(data, gt_labels, 3, 3)
     print(fold_accuracies)
+    print(avg_accuracy)
+    print(config_matrix)
     '''length,num_features= np.shape(data)
     index = np.arange(len(data))
     np.random.shuffle(index)    
@@ -97,9 +96,23 @@ if __name__ == "__main__":
     for i in range(len(test_label)):
         test_label[i] =label[test_index[i]] 
         if test_label[i][0] == est_class[i]:
-            num=num+1 ''' 
+            num=num+1 
         
         
 
-     
+        train_data_total = [data[index] for index in train_index]
+        print(train_data_total)
+        test_data_total = [data[index] for index in test_index]
+        train_label = [gt_labels[index] for index in train_index]
+        test_label = [gt_labels[index] for index in test_index]
+        est_class = np.zeros((num_feature))
+        for i in range(num_feature):
+            train_data = train_data_total[:,i]
+            test_data = test_data_total[:,i]
+            est_class = knearestneighbor(test_data, train_data, train_label, k)
+            for a in range(len(test_label)):
+                num = 0
+                if int(test_label[a]) == int(est_class[a]):
+                    num = num+1
+            fold_accuracies[j,i] = num/len(test_label)'''     
      

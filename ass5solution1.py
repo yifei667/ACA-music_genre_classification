@@ -4,7 +4,6 @@ from scipy.cluster.vq import vq, kmeans, whiten
 import matplotlib.pyplot as plt
 
 def knearestneighbor(test_data, train_data, train_label, k):
-
     length, num_features = np.shape(train_data)
     est_class = np.zeros((len(test_data),1))
     for i in range(len(test_data)):
@@ -153,37 +152,61 @@ def select_features(data, labels, k, num_folds):
 
 def evaluate(data,labels):
     features = np.loadtxt(os.path.join(os.path.dirname(__file__), 'data/feature_dict.txt'), delimiter=',', dtype=str)
-    
-    # k1_features = select_features(data,labels,1,10)
-    k1_features = [0,1,2]
-    print('Selected features for k = 1: ',features[k1_features])
-    selected_data = np.take(data, k1_features,0)
+    [sel_feature_ind, accuracy] = select_features(data, gt_labels, 3, 3)
+
+    print('Selected features for k = 3, numFolds = 3: ',features[sel_feature_ind])
+    print(data.shape)
+    selected_data = np.take(data, sel_feature_ind, 1)
+    print('--------------')
+    print(selected_data.shape)
+
     print('Average accuracy & confusion matrix for k = 1, folds = 10 after feature selection :')
-    print( cross_validate(selected_data, labels, 1, 10))
+    avg_accuracy, fold_accuracy, conf_matrix  = cross_validate(selected_data, labels, 1, 10)
+    print('Avg accuracy : ', avg_accuracy)
+    print('Fold accuracy : ',fold_accuracy)
+    print('Confusion matrix : ',conf_matrix)
 
-    # k3_features = select_features(data,labels,3,10)
-    k3_features = [0,1,2]
-    print('Selected features for k = 3: ',features[k3_features])
-    selected_data = np.take(data, k3_features,0)
     print('Average accuracy & confusion matrix for k = 3, folds = 10 after feature selection :')
-    print( cross_validate(selected_data, labels, 3, 10))
+    avg_accuracy, fold_accuracy, conf_matrix  = cross_validate(selected_data, labels, 3, 10)
+    print('Avg accuracy : ', avg_accuracy)
+    print('Fold accuracy : ',fold_accuracy)
+    print('Confusion matrix : ',conf_matrix)
 
-    # k7_features = select_features(data,labels,7,10)
-    k7_features = [0,1,2]
-    print('Selected features for k = 7: ',features[k7_features])
-    selected_data = np.take(data, k7_features,0)
     print('Average accuracy & confusion matrix for k = 7, folds = 10 after feature selection :')
-    print( cross_validate(selected_data, labels, 7, 10))
+    avg_accuracy, fold_accuracy, conf_matrix  = cross_validate(selected_data, labels, 7, 10)
+    print('Avg accuracy : ', avg_accuracy)
+    print('Fold accuracy : ',fold_accuracy)
+    print('Confusion matrix : ',conf_matrix)
 
 def kmeans_clustering(data, k):
     # normalization with unit variance for kmeans clustering
     print(data.shape)
     whitened_data = whiten(data)
-    centroids, distortion = kmeans(whitened_data, k)
-    clusters = vq(whitened_data, centroids)
-    # clusters = clusters + 1
-    print(clusters[0] + 1)
+    
+    # initialize random centroids
+    centroids = whitened_data[np.random.randint(whitened_data.shape[0], size=5), :]
+    print(centroids.shape)
 
+    total_distance = 0
+    closest_centroid = np.zeros(whitened_data.shape[0])
+    while (True):
+        total_distance = 0
+        dc_ccentroid = closest_centroid.copy()
+        
+        # calculate distances and closest  centroid from each point in the whitened_data
+        distances = np.sqrt(((whitened_data - centroids[:, np.newaxis])**2).sum(axis=2))
+        print(distances.shape)
+        closest_centroid = np.argmin(distances, axis=0)
+        print(closest_centroid.shape)
+        
+
+        # adjust centroids 
+        centroids = np.array([data[closest_centroid==k].mean(axis=0) for k in range(centroids.shape[0])])
+        if np.array_equal(closest_centroid, dc_ccentroid):
+            print('converged')
+            print('Cluster labels :', closest_centroid)
+            print('Corresponding distances from each cluster centroid :', distances)
+            break
 
 if __name__ == "__main__": 
 
@@ -192,19 +215,20 @@ if __name__ == "__main__":
     gt_labels = np.loadtxt(pathlabel,dtype=str)
     data = np.loadtxt(pathdata, dtype=float)
     data = np.transpose(data)
-    
-    avg_accuracy,fold_accuracies,config_matrix = cross_validate(data, gt_labels, 3, 3)
-    feature_index = find_best_features(data, gt_labels, 3, 3)
-    [sel_feature_ind, accuracy] = select_features(data, gt_labels, 3, 3)
+    kmeans_clustering(data, gt_labels)
+    # evaluate(data, gt_labels)
+    # avg_accuracy,fold_accuracies,config_matrix = cross_validate(data, gt_labels, 3, 3)
+    # feature_index = find_best_features(data, gt_labels, 3, 3)
+    # [sel_feature_ind, accuracy] = select_features(data, gt_labels, 3, 3)
     
     #print (avg_accuracy)
     #print (sel_feature_ind)
     #print (accuracy)
     
-    plt.plot(accuracy)
-    plt.xlabel('Number of Features')
-    plt.ylabel('Accuracy')
-    plt.show()
+    # plt.plot(accuracy)
+    # plt.xlabel('Number of Features')
+    # plt.ylabel('Accuracy')
+    # plt.show()
 
 
 

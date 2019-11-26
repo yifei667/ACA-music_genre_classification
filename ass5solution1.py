@@ -17,15 +17,34 @@ def knearestneighbor(test_data, train_data, train_label, k):
             else:
                 distance[j] = np.sqrt(sum((train[k]-test_now[k])**2 for k in range(num_features)))
         sorted_index = np.argsort(distance,axis=0) 
-        index = sorted_index[:3]
-        classcount = {}
-        for a in range(k):
-            label = train_label[index[a][0]]
-            num_class= int(label)
-            if num_class in classcount.keys():
-                classcount[num_class] +=1
+        index = sorted_index[:k]
+        add=1
+        while distance[sorted_index[k]] == distance[sorted_index[k+add]]:
+            add+=1
+        if add==1:
+           classcount = {}
+           for a in range(k):
+               label = train_label[index[a][0]]
+               num_class = int(label)
+               if num_class in classcount.keys():
+                  classcount[num_class] +=1 
+               else:
+                   classcount[num_class] =1
+        else:
+            classcount = {}
+            k1 = np.random.choice(np.arange(add-1))
+            for a in range(k-1):
+               label = train_label[index[a][0]]
+               num_class = int(label)
+               if num_class in classcount.keys():
+                   classcount[num_class]+=1
+               else:
+                   classcount[num_class] =1
+            label_choose = int(train_label[sorted_index[k+k1][0]])
+            if label_choose in classcount.keys():
+                classcount[label_choose]+=1
             else:
-                classcount[num_class] =1
+                classcount[label_choose] =1
         est_class[i] = max(zip(classcount.values(), classcount.keys()))[1]
     return est_class
 
@@ -73,6 +92,7 @@ def find_best_features(data, labels, k, num_folds):
     [avg_accuracy, fold_accuracies, conf_matrix] = cross_validate(data, labels, k, num_folds)
     
     feature_index = np.argmax(avg_accuracy)
+    print(feature_index)
 
     return feature_index
 
@@ -140,11 +160,13 @@ def select_features(data, labels, k, num_folds):
     
     accuracy = acc[0]
     sel_feature_ind = sel_feature_indices[0]
-
-    for i in range(num_features-1):
-        if (acc[i+1] > acc[i]):
+    acc_optimal = accuracy
+    for i in range(0,num_features-1):
+        if (acc[i+1] > acc_optimal):
+            acc_optimal = acc[i+1]
             accuracy = np.append(accuracy, acc[i+1])
             sel_feature_ind = np.append(sel_feature_ind, sel_feature_indices[i+1])
+    print(accuracy)
 
    
     return sel_feature_ind, accuracy
@@ -216,19 +238,15 @@ if __name__ == "__main__":
     data = np.loadtxt(pathdata, dtype=float)
     data = np.transpose(data)
     kmeans_clustering(data, gt_labels)
-    # evaluate(data, gt_labels)
-    # avg_accuracy,fold_accuracies,config_matrix = cross_validate(data, gt_labels, 3, 3)
-    # feature_index = find_best_features(data, gt_labels, 3, 3)
-    # [sel_feature_ind, accuracy] = select_features(data, gt_labels, 3, 3)
-    
-    #print (avg_accuracy)
-    #print (sel_feature_ind)
-    #print (accuracy)
-    
-    # plt.plot(accuracy)
-    # plt.xlabel('Number of Features')
-    # plt.ylabel('Accuracy')
-    # plt.show()
+    avg_accuracy,fold_accuracies,config_matrix = cross_validate(data, gt_labels, 3, 3)
+    feature_index = find_best_features(data, gt_labels, 3, 3)
+    [sel_feature_ind, accuracy] = select_features(data, gt_labels, 3, 3)   
+    print (avg_accuracy)
+    print (sel_feature_ind)
+    plt.plot(accuracy)
+    plt.xlabel('Number of Features')
+    plt.ylabel('Accuracy')
+    plt.show()
 
 
 
